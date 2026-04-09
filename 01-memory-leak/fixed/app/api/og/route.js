@@ -2,23 +2,25 @@ import { ImageResponse } from 'next/og'
 import { readFile } from 'fs/promises'
 import path from 'path'
 
-// ✅ FIX: font loaded once at module level, cached in memory for all subsequent requests
-// The module-level cache persists for the lifetime of the server process.
-// Heap stays flat under load.
-let fontData = null
+// ✅ FIX: cache the Promise, not the resolved value.
+// Caching the result has a race condition — with concurrent requests, multiple
+// callers see `fontData === null` before the first read resolves and each
+// starts their own readFile. Caching the Promise ensures only one read ever
+// starts, and all concurrent callers await the same Promise.
+let fontPromise = null
 
-async function getFont() {
-  if (!fontData) {
-    fontData = await readFile(path.join(process.cwd(), 'public/Inter-Bold.ttf'))
+function getFont() {
+  if (!fontPromise) {
+    fontPromise = readFile(path.join(process.cwd(), 'public/Inter-Bold.ttf'))
   }
-  return fontData
+  return fontPromise
 }
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const title = searchParams.get('title') || 'Hello World'
 
-  const font = await getFont()
+  const font = await getFont() // all concurrent requests share the same Promise
 
   return new ImageResponse(
     (
