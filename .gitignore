@@ -7,3 +7,6 @@ results/
 
 # Generated data files
 */data/products.json
+
+# Article drafts
+articles/
