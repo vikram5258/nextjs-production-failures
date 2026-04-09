@@ -1,7 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  // standalone output is required to reproduce the leak
-  output: 'standalone',
-}
+const nextConfig = {}
 
 module.exports = nextConfig
