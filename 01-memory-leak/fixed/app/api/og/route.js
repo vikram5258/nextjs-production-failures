@@ -2,8 +2,9 @@ import { ImageResponse } from 'next/og'
 import { readFile } from 'fs/promises'
 import path from 'path'
 
-// ✅ FIX: load font once at module level, outside the request handler
-// This gets cached for the lifetime of the process
+// ✅ FIX: font loaded once at module level, cached in memory for all subsequent requests
+// The module-level cache persists for the lifetime of the server process.
+// Heap stays flat under load.
 let fontData = null
 
 async function getFont() {
@@ -24,12 +25,14 @@ export async function GET(request) {
       <div
         style={{
           fontSize: 40,
-          background: 'white',
+          background: '#0a0a0a',
+          color: '#ffffff',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: '40px',
         }}
       >
         {title}
