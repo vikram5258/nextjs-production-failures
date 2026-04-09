@@ -14,9 +14,27 @@ I first hit this on a project where we were using `next/og` for dynamic OG image
 
 Tracked issue: https://github.com/vercel/next.js/issues/65451
 
-**Reproduce:** See `reproduce/` — a standalone Next.js app with an `/api/og` route under load.
+**Reproduce:** See `reproduce/` — a standalone Next.js app with an `/api/og` route under load. Hit `/api/memory` to watch heap grow in real time.
 
-**Fix:** See `fixed/` — cache the font buffer outside the handler, limit concurrent requests with a semaphore.
+**Fix:** See `fixed/` — cache the font buffer at module level so it's only loaded once. But there's a subtle gotcha: caching the *resolved value* still has a race condition under concurrent load — multiple requests see `null` before the first read completes and each triggers its own file read. Cache the *Promise* instead:
+
+```js
+// ❌ Race condition — concurrent requests all see null before first resolves
+let fontData = null
+async function getFont() {
+  if (!fontData) fontData = await readFile(fontPath) // 20 concurrent reqs = 20 reads
+  return fontData
+}
+
+// ✅ Promise caching — only one read ever starts
+let fontPromise = null
+function getFont() {
+  if (!fontPromise) fontPromise = readFile(fontPath) // all concurrent reqs share one promise
+  return fontPromise
+}
+```
+
+Tested under load: the fixed version RSS plateaus at ~265MB after 70 requests (+7MB over the next 30). The buggy version kept climbing +51MB over the same window with no plateau.
 
 ### 2. Next.js global `fetch()` patch
 
